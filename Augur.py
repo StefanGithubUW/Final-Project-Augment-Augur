@@ -3,8 +3,10 @@ import tftfunctions
 
 client = discord.Client()
 
+# This is the basic profile, which shows the important info about the current user's game state
 profile = {'hes': False, 'gt': False, 'lvl': 1}
 
+# Dictionary of commands the bot accepts, in a command: description format
 augurCommands = {
     '$Help': "Displays information about available commands!",
     '$Augur': "Starts an instance of the Augment Augur Program!",
@@ -14,35 +16,35 @@ augurCommands = {
     '$Profile': "Displays information about available commands, or a command in specific!",
     '$Add X': "Adds an element to your Profile. You can replace X with Golden Ticket or High End Shopping "
               "to add augments, or you can replace it with level (or lvl) to increase your level by one",
-    'Remove X': "Removes an element to your Profile. You can replace X with Golden Ticket or High End Shopping "
+    'Remove X': "Removes an element from your Profile. You can replace X with Golden Ticket or High End Shopping "
                 "to remove augments, or you can replace it with level (or lvl) to remove your level by one",
     '$Set Level X': "Sets your level to the value you input for X, as long as it is between 1 and 10",
     '$Find X': "Calculates statistics about your ability to find a unit, with X being the name of the unit"
-
 }
 
-
-def yesorno(userinput):
-    if userinput[0].lower() == 'y' or userinput[0] == 1:
-        return "y"
-    else:
-        return "n"
-
-
+# This utility method sends a message to the discord client in the form of an "Embed". It is in
+# this format to show that it is from the bot, and to keep output organized
 async def sendemb(message, title="Title", url=None, description="description", color=0xFF5733):
+
+    # Formats the embed based on passed in parameters
     if url != None:
         embed = discord.Embed(title=title, url=url, description=description, color=color)
     else:
         embed = discord.Embed(title=title, description=description, color=color)
 
+    # Sends the embed to the discord client
     await message.channel.send(embed=embed)
 
 
+# When the program connects to discord and is ready to perform actions
+# it triggers the on_ready event
 @client.event
 async def on_ready():
     print('We have logged in as {0.user}'.format(client))
 
 
+# Whenever a message is sent, it triggers the on_message event and passes in
+# the message object as a parameter. This is used to collect commands
 @client.event
 async def on_message(message):
     # If the bot sent the message, nothing happens
@@ -51,14 +53,8 @@ async def on_message(message):
 
     content = message.content.lower()
 
-    if content.startswith("embed"):
-        await sendemb(message)
-
-    # returns true if the bot is by the same author as the one to send the
-    # first message
-    def check(msg):
-        return msg.author == message.author and msg.channel == message.channel
-
+    # Command for the bot to start tracking a new set of info,
+    # not case-sensitive.
     if content.startswith('$augur') or content.startswith("$new"):
         profile['hes'] = False
         profile['gt'] = False
@@ -66,6 +62,7 @@ async def on_message(message):
         await sendemb(message, title="Starting New Profile", description="Your augments and level have been reset! "
                                                                          "To see supported commands, Enter $Help")
 
+    # Command for the bot to output a help message to the client
     if content.startswith("$help"):
         helpmessage = ""
         for command in augurCommands:
@@ -73,6 +70,12 @@ async def on_message(message):
 
         await sendemb(message, title="$Help Command Received", description=helpmessage)
 
+    # Command for the Bot to find the number of rolls possible with
+    # a given amount of gold. Command is input with the format $roll X,
+    # where X is an integer value. The command is not caps sensitive.
+    # In the case that the user has the Golden Ticket augment, each roll
+    # will have a 35% chance to grant another roll. Free rolls provided by
+    # the augment are also subject to this chance. Command is not case-sensitive
     if content.startswith('$roll'):
         if profile['gt'] == False:
             gold = message.content[6:]
@@ -93,10 +96,10 @@ async def on_message(message):
             rollvals = "Expected Rolls: %s" % (round(rollsexpected, 2))
             await sendemb(message, title=rolltitle, description=rollvals)
 
+    # Command to output user's game info to the discord client
+    # The command is not case-sensitive.
     if content.startswith('$profile'):
         profmessage = ""
-        # for item in profile:
-        #     profmessage += "%s: %s\n"%(item, profile[item])
 
         profmessage += "You are Level %s\n" % (profile['lvl'])
         if profile['hes']:
@@ -110,6 +113,9 @@ async def on_message(message):
                 profmessage += "No Active Augment Modifiers"
         await sendemb(message, title="Current Profile", description=profmessage)
 
+    # Commands to add an element to the Profile: This can be one of the two augments
+    # with an economic/roll chance impact, or an increase to level (level cannot go above 10)
+    # The commands are not case-sensitive.
     if content.startswith("$add hes") or content.startswith('$add high end shopping'):
         profile['hes'] = True
         await sendemb(message, title="Profile Adjusted", description="High End Shopping Augment Acquired")
@@ -124,14 +130,15 @@ async def on_message(message):
         else:
             await sendemb(message, title="Level Could Not Be Changed", description="Levels Cannot Go Above 10")
 
+    # Commands to remove an element from the Profile: This can be one of the two augments
+    # with an economic/roll chance impact, or an decrease to level (level cannot go below 1)
+    # The commands are not case-sensitive.
     if content.startswith("$remove hes") or content.startswith('$remove high end shopping'):
         profile['hes'] = False
         await sendemb(message, title="Profile Adjusted", description="High End Shopping Augment Removed")
-
     elif content.startswith("$remove gt") or content.startswith('$remove golden ticket'):
         profile['gt'] = False
         await sendemb(message, title="Profile Adjusted", description="Golden Ticket Augment Removed")
-
     elif content.startswith("$remove level") or content.startswith('$remove lvl'):
         if profile['lvl'] != 1:
             profile["lvl"] -= 1
@@ -139,6 +146,8 @@ async def on_message(message):
         else:
             await sendemb(message, title="Level Could Not Be Changed", description="Levels Cannot Go Below 1")
 
+    # An alternative to adding/removing levels, this sets your level to a desired value
+    # between 1 and 10. The command is not case-sensitive.
     if content.startswith("$set level") or content.startswith("$set lvl"):
         cont = content.split()
         toset = int(cont[2])
@@ -151,6 +160,10 @@ async def on_message(message):
             sendemb(message, title="Level Could Not Be Adjusted",
                     description="You Must Choose a Level Between 1 and 10")
 
+    # Command to find the odds of seeing a unit when consuming a roll,
+    # The central component of the application. The desired unit must
+    # exist in the current TFT game, and the command is not Case-Sensitive.
+    # Not all units can be found at every level.
     if content.startswith('$find'):
         findx = message.content
         findxlist = findx.split()
@@ -185,5 +198,5 @@ async def on_message(message):
         else:
             await sendemb(message, title="That is Not a Valid Unit", description="Try checking your spelling")
 
-
-client.run('OTE3NjU5NTQ1Nzc2NTc0NDk0.Ya77DQ.JWq8znvza_Ocufp_MXoAg4S14ow')
+import augurkey as augurkey
+client.run(augurkey.key)
